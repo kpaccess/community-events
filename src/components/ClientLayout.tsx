@@ -6,7 +6,7 @@ import theme from '@/theme';
 import { AppProvider } from '@/context/AppContext';
 import Navbar from './Navbar';
 
-export default function ClientLayout({ children }) {
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppProvider>
       <ThemeProvider theme={theme}>

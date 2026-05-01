@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -17,15 +17,16 @@ import SearchIcon from '@mui/icons-material/Search';
 import EventIcon from '@mui/icons-material/Event';
 import EventCard from '@/components/EventCard';
 import { useApp } from '@/context/AppContext';
+import type { Attendee } from '@/types';
 
-const CATEGORIES = ['All', 'Technology', 'AI & Machine Learning', 'Design', 'Marketing', 'Gaming', 'Business', 'Health'];
+const CATEGORIES = ['All', 'Technology', 'AI & Machine Learning', 'Design', 'Marketing', 'Gaming', 'Business', 'Health & Wellness'];
 const SORT_OPTIONS = [
   { value: 'date-asc', label: 'Date (Soonest)' },
   { value: 'date-desc', label: 'Date (Latest)' },
   { value: 'popular', label: 'Most Popular' },
 ];
 
-export default function EventsPage() {
+function EventsPageInner() {
   const searchParams = useSearchParams();
   const { events, currentUser, loading } = useApp();
 
@@ -34,7 +35,6 @@ export default function EventsPage() {
   const [sort, setSort] = useState('date-asc');
   const [showPast, setShowPast] = useState(false);
 
-  // Pre-fill category from query param (e.g. from home page category tiles)
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat) setCategory(cat);
@@ -47,14 +47,14 @@ export default function EventsPage() {
         const isUpcoming = new Date(e.date + 'T23:59:59') >= now;
         if (!showPast && !isUpcoming) return false;
         if (search && !e.title.toLowerCase().includes(search.toLowerCase()) &&
-            !e.description.toLowerCase().includes(search.toLowerCase()) &&
-            !e.location.toLowerCase().includes(search.toLowerCase())) return false;
+            !(e.description ?? '').toLowerCase().includes(search.toLowerCase()) &&
+            !(e.location ?? '').toLowerCase().includes(search.toLowerCase())) return false;
         if (category !== 'All' && e.category !== category) return false;
         return true;
       })
       .sort((a, b) => {
-        if (sort === 'date-asc') return new Date(a.date) - new Date(b.date);
-        if (sort === 'date-desc') return new Date(b.date) - new Date(a.date);
+        if (sort === 'date-asc') return new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (sort === 'date-desc') return new Date(b.date).getTime() - new Date(a.date).getTime();
         if (sort === 'popular') {
           const ag = (a.attendees || []).filter(x => x.status === 'going').length;
           const bg = (b.attendees || []).filter(x => x.status === 'going').length;
@@ -65,12 +65,12 @@ export default function EventsPage() {
   }, [events, search, category, sort, showPast]);
 
   const myRsvpMap = useMemo(() => {
-    if (!currentUser) return {};
+    if (!currentUser) return {} as Record<string, Attendee>;
     return events.reduce((map, e) => {
       const rsvp = (e.attendees || []).find(a => a.userId === currentUser.id);
       if (rsvp) map[e.id] = rsvp;
       return map;
-    }, {});
+    }, {} as Record<string, Attendee>);
   }, [events, currentUser]);
 
   if (loading) {
@@ -83,22 +83,15 @@ export default function EventsPage() {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{
-        background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 60%, #4338CA 100%)',
-        py: { xs: 5, md: 7 },
-      }}>
+      <Box sx={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 60%, #4338CA 100%)', py: { xs: 5, md: 7 } }}>
         <Container maxWidth="lg">
-          <Typography variant="h3" color="#fff" sx={{ mb: 0.5, fontSize: { xs: '1.8rem', md: '2.5rem' } }}>
-            Explore Events
-          </Typography>
+          <Typography variant="h3" color="#fff" sx={{ mb: 0.5, fontSize: { xs: '1.8rem', md: '2.5rem' } }}>Explore Events</Typography>
           <Typography color="rgba(255,255,255,0.65)" sx={{ mb: 3, fontSize: '1rem' }}>
             {events.filter(e => new Date(e.date + 'T23:59:59') >= new Date()).length} upcoming events in your community
           </Typography>
           <TextField
             placeholder="Search events by name, location, or topic…"
-            fullWidth
-            value={search}
+            fullWidth value={search}
             onChange={e => setSearch(e.target.value)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>,
@@ -110,45 +103,33 @@ export default function EventsPage() {
       </Box>
 
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-        {/* Filters */}
         <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Category chips */}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
             {CATEGORIES.map(cat => (
-              <Chip
-                key={cat}
-                label={cat}
-                onClick={() => setCategory(cat)}
+              <Chip key={cat} label={cat} onClick={() => setCategory(cat)}
                 variant={category === cat ? 'filled' : 'outlined'}
                 color={category === cat ? 'primary' : 'default'}
                 sx={{ fontWeight: 600, cursor: 'pointer' }}
               />
             ))}
-            <Chip
-              label={showPast ? 'Hide Past' : 'Show Past'}
-              onClick={() => setShowPast(p => !p)}
+            <Chip label={showPast ? 'Hide Past' : 'Show Past'} onClick={() => setShowPast(p => !p)}
               variant={showPast ? 'filled' : 'outlined'}
               color={showPast ? 'secondary' : 'default'}
               sx={{ fontWeight: 600, cursor: 'pointer' }}
             />
           </Box>
-          {/* Sort */}
           <FormControl size="small" sx={{ minWidth: 160 }}>
             <InputLabel>Sort by</InputLabel>
             <Select value={sort} label="Sort by" onChange={e => setSort(e.target.value)} sx={{ borderRadius: 2 }}>
-              {SORT_OPTIONS.map(o => (
-                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-              ))}
+              {SORT_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
             </Select>
           </FormControl>
         </Box>
 
-        {/* Results count */}
         <Typography color="text.secondary" variant="body2" sx={{ mb: 3 }}>
           {filtered.length} {filtered.length === 1 ? 'event' : 'events'} found
         </Typography>
 
-        {/* Grid */}
         {filtered.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>
             <EventIcon sx={{ fontSize: 56, mb: 2, opacity: 0.3 }} />
@@ -166,5 +147,13 @@ export default function EventsPage() {
         )}
       </Container>
     </Box>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={null}>
+      <EventsPageInner />
+    </Suspense>
   );
 }

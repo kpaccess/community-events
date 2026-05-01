@@ -27,78 +27,42 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!email || !password) { setError('Please fill in all fields.'); return; }
     setLoading(true);
     const result = await login(email, password);
     setLoading(false);
-    if (!result.success) { setError(result.error); return; }
+    if (!result.success) { setError(result.error ?? 'Login failed.'); return; }
     router.push('/events');
   };
 
   return (
-    <Box sx={{
-      minHeight: 'calc(100vh - 64px)',
-      display: 'flex', alignItems: 'center',
-      background: 'linear-gradient(135deg, #EEF2FF 0%, #F8F7FF 50%, #FDF4FF 100%)',
-    }}>
+    <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', background: 'linear-gradient(135deg, #EEF2FF 0%, #F8F7FF 50%, #FDF4FF 100%)' }}>
       <Container maxWidth="xs">
         <Paper sx={{ p: { xs: 3, sm: 4.5 }, borderRadius: 3 }} elevation={0}>
-          {/* Logo */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Box sx={{
-              width: 52, height: 52, mx: 'auto', mb: 2,
-              background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-              borderRadius: '14px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(79,70,229,0.35)',
-            }}>
+            <Box sx={{ width: 52, height: 52, mx: 'auto', mb: 2, background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(79,70,229,0.35)' }}>
               <Typography sx={{ color: '#fff', fontFamily: '"Syne", sans-serif', fontWeight: 800, fontSize: '1.5rem' }}>G</Typography>
             </Box>
             <Typography variant="h5" fontWeight={700} gutterBottom>Welcome back</Typography>
-            <Typography color="text.secondary" fontSize="0.9rem">
-              Sign in to your Gather account
-            </Typography>
+            <Typography color="text.secondary" fontSize="0.9rem">Sign in to your Gather account</Typography>
           </Box>
-
-          {/* Hint */}
-          <Alert severity="info" sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem' }}>
-            <strong>Admin demo:</strong> admin@gather.com / admin123
-          </Alert>
 
           {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
-              label="Email address"
-              type="email"
-              fullWidth
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              sx={{ mb: 2 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-              }}
+              label="Email address" type="email" fullWidth value={email}
+              onChange={e => setEmail(e.target.value)} sx={{ mb: 2 }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><EmailIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment> }}
             />
             <TextField
-              label="Password"
-              type={showPw ? 'text' : 'password'}
-              fullWidth
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              sx={{ mb: 3 }}
+              label="Password" type={showPw ? 'text' : 'password'} fullWidth value={password}
+              onChange={e => setPassword(e.target.value)} sx={{ mb: 3 }}
               InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
+                startAdornment: <InputAdornment position="start"><LockIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>,
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton onClick={() => setShowPw(!showPw)} edge="end" size="small">
@@ -108,23 +72,14 @@ export default function LoginPage() {
                 ),
               }}
             />
-
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              size="large"
-              disabled={loading}
-              sx={{ py: 1.4, fontSize: '1rem', mb: 2 }}
-            >
+            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ py: 1.4, fontSize: '1rem', mb: 2 }}>
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </Box>
 
           <Divider sx={{ my: 2 }} />
-
           <Typography textAlign="center" fontSize="0.9rem" color="text.secondary">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Box component={Link} href="/auth/signup" sx={{ color: 'primary.main', fontWeight: 700, textDecoration: 'none' }}>
               Sign up free
             </Box>

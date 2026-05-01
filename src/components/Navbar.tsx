@@ -37,30 +37,23 @@ export default function Navbar() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { currentUser, isAdmin, logout } = useApp();
 
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setAnchorEl(null);
     setDrawerOpen(false);
-    logout();
+    await logout();
     router.push('/');
   };
 
-  const isActive = (href) => pathname === href || pathname.startsWith(href + '/');
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
     <AppBar position="sticky" elevation={0} sx={{ color: 'text.primary', zIndex: 1100 }}>
       <Toolbar sx={{ px: { xs: 2, md: 4 }, py: 1, maxWidth: 1280, mx: 'auto', width: '100%' }}>
         {/* Logo */}
-        <Box
-          component={Link}
-          href="/"
-          sx={{
-            display: 'flex', alignItems: 'center', gap: 1,
-            textDecoration: 'none', flexGrow: 0, mr: 4,
-          }}
-        >
+        <Box component={Link} href="/" sx={{ display: 'flex', alignItems: 'center', gap: 1, textDecoration: 'none', flexGrow: 0, mr: 4 }}>
           <Box sx={{
             width: 34, height: 34,
             background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
@@ -72,12 +65,7 @@ export default function Navbar() {
               G
             </Typography>
           </Box>
-          <Typography sx={{
-            fontFamily: '"Syne", sans-serif',
-            fontWeight: 800, fontSize: '1.25rem',
-            color: 'primary.dark',
-            display: { xs: 'none', sm: 'block' },
-          }}>
+          <Typography sx={{ fontFamily: '"Syne", sans-serif', fontWeight: 800, fontSize: '1.25rem', color: 'primary.dark', display: { xs: 'none', sm: 'block' } }}>
             Gather
           </Typography>
         </Box>
@@ -86,11 +74,7 @@ export default function Navbar() {
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexGrow: 1 }}>
             {NAV_LINKS.map(link => (
-              <Button
-                key={link.href}
-                component={Link}
-                href={link.href}
-                startIcon={link.icon}
+              <Button key={link.href} component={Link} href={link.href} startIcon={link.icon}
                 sx={{
                   color: isActive(link.href) ? 'primary.main' : 'text.secondary',
                   background: isActive(link.href) ? 'rgba(79,70,229,0.08)' : 'transparent',
@@ -104,10 +88,7 @@ export default function Navbar() {
             ))}
             {isAdmin && (
               <>
-                <Button
-                  component={Link}
-                  href="/dashboard"
-                  startIcon={<DashboardIcon sx={{ fontSize: 18 }} />}
+                <Button component={Link} href="/dashboard" startIcon={<DashboardIcon sx={{ fontSize: 18 }} />}
                   sx={{
                     color: isActive('/dashboard') ? 'primary.main' : 'text.secondary',
                     background: isActive('/dashboard') ? 'rgba(79,70,229,0.08)' : 'transparent',
@@ -118,14 +99,7 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Button>
-                <Button
-                  component={Link}
-                  href="/events/create"
-                  variant="contained"
-                  startIcon={<AddCircleIcon />}
-                  size="small"
-                  sx={{ ml: 1 }}
-                >
+                <Button component={Link} href="/events/create" variant="contained" startIcon={<AddCircleIcon />} size="small" sx={{ ml: 1 }}>
                   New Event
                 </Button>
               </>
@@ -135,62 +109,28 @@ export default function Navbar() {
 
         {!isMobile && <Box sx={{ flexGrow: 1 }} />}
 
-        {/* Auth Buttons / User Menu */}
+        {/* Auth / User Menu */}
         {!currentUser ? (
           !isMobile ? (
             <Box sx={{ display: 'flex', gap: 1.5 }}>
-              <Button
-                component={Link} href="/auth/login"
-                variant="outlined" color="primary"
-                sx={{ px: 3, py: 0.75 }}
-              >
-                Log in
-              </Button>
-              <Button
-                component={Link} href="/auth/signup"
-                variant="contained" color="primary"
-                sx={{ px: 3, py: 0.75 }}
-              >
-                Sign up
-              </Button>
+              <Button component={Link} href="/auth/login" variant="outlined" color="primary" sx={{ px: 3, py: 0.75 }}>Log in</Button>
+              <Button component={Link} href="/auth/signup" variant="contained" color="primary" sx={{ px: 3, py: 0.75 }}>Sign up</Button>
             </Box>
           ) : (
-            <IconButton onClick={() => setDrawerOpen(true)}>
-              <MenuIcon />
-            </IconButton>
+            <IconButton onClick={() => setDrawerOpen(true)}><MenuIcon /></IconButton>
           )
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {isAdmin && (
-              <Chip
-                label="Admin"
-                size="small"
-                sx={{
-                  background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '0.7rem',
-                  display: { xs: 'none', sm: 'flex' },
-                }}
-              />
+              <Chip label="Admin" size="small" sx={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', color: '#fff', fontWeight: 700, fontSize: '0.7rem', display: { xs: 'none', sm: 'flex' } }} />
             )}
-            {isMobile && (
-              <IconButton onClick={() => setDrawerOpen(true)}>
-                <MenuIcon />
-              </IconButton>
-            )}
+            {isMobile && <IconButton onClick={() => setDrawerOpen(true)}><MenuIcon /></IconButton>}
             {!isMobile && (
               <>
-                <Avatar
-                  onClick={(e) => setAnchorEl(e.currentTarget)}
-                  sx={{ cursor: 'pointer', width: 36, height: 36, fontSize: '0.85rem' }}
-                >
+                <Avatar onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ cursor: 'pointer', width: 36, height: 36, fontSize: '0.85rem' }}>
                   {currentUser.avatar}
                 </Avatar>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={() => setAnchorEl(null)}
+                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}
                   PaperProps={{ sx: { mt: 1, minWidth: 200, borderRadius: 2 } }}
                 >
                   <Box sx={{ px: 2, py: 1.5 }}>
@@ -200,20 +140,17 @@ export default function Navbar() {
                   <Divider />
                   {isAdmin && (
                     <MenuItem onClick={() => { setAnchorEl(null); router.push('/dashboard'); }}>
-                      <DashboardIcon sx={{ mr: 1.5, fontSize: 18, color: 'primary.main' }} />
-                      Dashboard
+                      <DashboardIcon sx={{ mr: 1.5, fontSize: 18, color: 'primary.main' }} /> Dashboard
                     </MenuItem>
                   )}
                   {isAdmin && (
                     <MenuItem onClick={() => { setAnchorEl(null); router.push('/events/create'); }}>
-                      <AddCircleIcon sx={{ mr: 1.5, fontSize: 18, color: 'primary.main' }} />
-                      New Event
+                      <AddCircleIcon sx={{ mr: 1.5, fontSize: 18, color: 'primary.main' }} /> New Event
                     </MenuItem>
                   )}
                   <Divider />
                   <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-                    <LogoutIcon sx={{ mr: 1.5, fontSize: 18 }} />
-                    Log out
+                    <LogoutIcon sx={{ mr: 1.5, fontSize: 18 }} /> Log out
                   </MenuItem>
                 </Menu>
               </>
@@ -222,21 +159,12 @@ export default function Navbar() {
         )}
 
         {/* Mobile Drawer */}
-        <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)}
-          PaperProps={{ sx: { width: 280, p: 2 } }}
-        >
+        <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 280, p: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, mt: 1 }}>
-            <Box sx={{
-              width: 34, height: 34,
-              background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-              borderRadius: '10px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <Box sx={{ width: 34, height: 34, background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Typography sx={{ color: '#fff', fontFamily: '"Syne", sans-serif', fontWeight: 800, fontSize: '1rem' }}>G</Typography>
             </Box>
-            <Typography sx={{ fontFamily: '"Syne", sans-serif', fontWeight: 800, fontSize: '1.25rem', color: 'primary.dark' }}>
-              Gather
-            </Typography>
+            <Typography sx={{ fontFamily: '"Syne", sans-serif', fontWeight: 800, fontSize: '1.25rem', color: 'primary.dark' }}>Gather</Typography>
           </Box>
 
           {currentUser && (
@@ -253,9 +181,7 @@ export default function Navbar() {
 
           <List disablePadding>
             {NAV_LINKS.map(link => (
-              <ListItemButton key={link.href} component={Link} href={link.href} onClick={() => setDrawerOpen(false)}
-                sx={{ borderRadius: 2, mb: 0.5 }}
-              >
+              <ListItemButton key={link.href} component={Link} href={link.href} onClick={() => setDrawerOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
                 {link.icon}
                 <ListItemText primary={link.label} sx={{ ml: 1.5 }} />
               </ListItemButton>
@@ -263,12 +189,10 @@ export default function Navbar() {
             {isAdmin && (
               <>
                 <ListItemButton component={Link} href="/dashboard" onClick={() => setDrawerOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
-                  <DashboardIcon sx={{ fontSize: 20 }} />
-                  <ListItemText primary="Dashboard" sx={{ ml: 1.5 }} />
+                  <DashboardIcon sx={{ fontSize: 20 }} /><ListItemText primary="Dashboard" sx={{ ml: 1.5 }} />
                 </ListItemButton>
                 <ListItemButton component={Link} href="/events/create" onClick={() => setDrawerOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
-                  <AddCircleIcon sx={{ fontSize: 20 }} />
-                  <ListItemText primary="New Event" sx={{ ml: 1.5 }} />
+                  <AddCircleIcon sx={{ fontSize: 20 }} /><ListItemText primary="New Event" sx={{ ml: 1.5 }} />
                 </ListItemButton>
               </>
             )}
@@ -282,13 +206,7 @@ export default function Navbar() {
               <Button variant="contained" fullWidth component={Link} href="/auth/signup" onClick={() => setDrawerOpen(false)}>Sign up</Button>
             </Box>
           ) : (
-            <Button
-              variant="outlined" color="error" fullWidth
-              startIcon={<LogoutIcon />}
-              onClick={handleLogout}
-            >
-              Log out
-            </Button>
+            <Button variant="outlined" color="error" fullWidth startIcon={<LogoutIcon />} onClick={handleLogout}>Log out</Button>
           )}
         </Drawer>
       </Toolbar>

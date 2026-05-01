@@ -54,7 +54,7 @@ const theme = createTheme({
     '0 20px 48px rgba(79,70,229,0.18)',
     '0 24px 56px rgba(79,70,229,0.20)',
     ...Array(15).fill('none'),
-  ],
+  ] as unknown as import('@mui/material/styles').Shadows,
   components: {
     MuiButton: {
       styleOverrides: {
@@ -83,9 +83,7 @@ const theme = createTheme({
         },
         outlinedPrimary: {
           borderColor: '#4F46E5',
-          '&:hover': {
-            background: 'rgba(79,70,229,0.06)',
-          },
+          '&:hover': { background: 'rgba(79,70,229,0.06)' },
         },
       },
     },
@@ -105,11 +103,7 @@ const theme = createTheme({
     },
     MuiChip: {
       styleOverrides: {
-        root: {
-          borderRadius: 6,
-          fontWeight: 600,
-          fontSize: '0.75rem',
-        },
+        root: { borderRadius: 6, fontWeight: 600, fontSize: '0.75rem' },
       },
     },
     MuiTextField: {
@@ -118,17 +112,13 @@ const theme = createTheme({
         root: {
           '& .MuiOutlinedInput-root': {
             borderRadius: 10,
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#4F46E5',
-            },
+            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#4F46E5' },
           },
         },
       },
     },
     MuiSelect: {
-      styleOverrides: {
-        root: { borderRadius: 10 },
-      },
+      styleOverrides: { root: { borderRadius: 10 } },
     },
     MuiAvatar: {
       styleOverrides: {
@@ -140,9 +130,7 @@ const theme = createTheme({
       },
     },
     MuiPaper: {
-      styleOverrides: {
-        rounded: { borderRadius: 16 },
-      },
+      styleOverrides: { rounded: { borderRadius: 16 } },
     },
     MuiAppBar: {
       styleOverrides: {
