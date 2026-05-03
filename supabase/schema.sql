@@ -78,35 +78,3 @@ create policy "rsvps_read"   on rsvps for select using (true);
 create policy "rsvps_insert" on rsvps for insert with check (user_id = auth.uid());
 create policy "rsvps_update" on rsvps for update using (user_id = auth.uid());
 create policy "rsvps_delete" on rsvps for delete using (user_id = auth.uid());
-
--- ── Seed Events ──────────────────────────────────────────────
-insert into events (title, description, date, time, end_time, location, address, category, capacity, color_tag, tags, online)
-values
-  (
-    'React & Next.js Builders Meetup',
-    E'Join us for an evening of React and Next.js discussions, live coding demos, and networking with fellow developers.\n\nTopics:\n• App Router deep dive & Server Components\n• Latest MUI v5 theming patterns\n• Performance optimization tips\n• Q&A with local tech leads\n\nAll skill levels welcome. Bring your laptop if you want to code along!',
-    '2026-05-20', '18:30', '21:00',
-    'Industrious Coworking – Nashville', '150 4th Ave N, Nashville, TN 37219',
-    'Technology', 50, '#4F46E5', array['React','Next.js','TypeScript','MUI'], false
-  ),
-  (
-    'AI & Automation Workshop',
-    E'Hands-on workshop exploring n8n workflows, Claude API integrations, and building agentic pipelines.\n\nWhat you''ll learn:\n• n8n workflow fundamentals\n• Connecting LLM APIs to real workflows\n• Real estate & short-term rental automation use cases\n• Building your first AI agent\n\nBring your laptop! Seats are limited to keep sessions interactive.',
-    '2026-06-05', '10:00', '14:00',
-    'WeWork Downtown Nashville', '500 Church St, Nashville, TN 37219',
-    'AI & Machine Learning', 30, '#F59E0B', array['AI','Automation','n8n','Claude API'], false
-  ),
-  (
-    'Frontend Design Systems Deep Dive',
-    E'Virtual deep dive into advanced MUI theming, design tokens with Style Dictionary, and Figma-to-code workflows.\n\nAgenda:\n• Design token architecture\n• MUI theme customization at scale\n• Figma MCP server demo\n• Component library patterns for large teams\n• Live Q&A\n\nAll attendees get access to the recorded session.',
-    '2026-06-18', '19:00', '21:30',
-    'Online – Zoom', 'Online',
-    'Design', 100, '#EC4899', array['MUI','Design Systems','Figma','Design Tokens'], true
-  ),
-  (
-    'GraphQL & API Design Patterns',
-    E'Deep dive into GraphQL schema design, performance optimization, and API best practices used at scale.\n\nTopics covered:\n• Schema-first design principles\n• DataLoader & batching strategies\n• Apollo Client caching patterns\n• REST vs GraphQL vs tRPC decision guide\n\nPerfect for backend and full-stack developers.',
-    '2026-07-10', '18:00', '20:30',
-    'Brentwood Public Library – Community Room', '8109 Concord Rd, Brentwood, TN 37027',
-    'Technology', 40, '#10B981', array['GraphQL','API','Apollo','Backend'], false
-  );

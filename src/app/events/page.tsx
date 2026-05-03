@@ -19,7 +19,6 @@ import EventCard from '@/components/EventCard';
 import { useApp } from '@/context/AppContext';
 import type { Attendee } from '@/types';
 
-const CATEGORIES = ['All', 'Technology', 'AI & Machine Learning', 'Design', 'Marketing', 'Gaming', 'Business', 'Health & Wellness'];
 const SORT_OPTIONS = [
   { value: 'date-asc', label: 'Date (Soonest)' },
   { value: 'date-desc', label: 'Date (Latest)' },
@@ -34,6 +33,13 @@ function EventsPageInner() {
   const [category, setCategory] = useState('All');
   const [sort, setSort] = useState('date-asc');
   const [showPast, setShowPast] = useState(false);
+
+  const categories = useMemo(() => {
+    const eventCategories = events
+      .map(e => e.category?.trim())
+      .filter((cat): cat is string => Boolean(cat));
+    return ['All', ...Array.from(new Set(eventCategories)).sort((a, b) => a.localeCompare(b))];
+  }, [events]);
 
   useEffect(() => {
     const cat = searchParams.get('category');
@@ -105,7 +111,7 @@ function EventsPageInner() {
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
         <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <Chip key={cat} label={cat} onClick={() => setCategory(cat)}
                 variant={category === cat ? 'filled' : 'outlined'}
                 color={category === cat ? 'primary' : 'default'}

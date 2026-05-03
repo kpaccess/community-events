@@ -9,7 +9,7 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
-import MenuItem from '@mui/material/MenuItem';
+import Autocomplete from '@mui/material/Autocomplete';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
@@ -17,11 +17,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import EventIcon from '@mui/icons-material/Event';
 import { useApp } from '@/context/AppContext';
-
-const CATEGORIES = [
-  'Technology', 'AI & Machine Learning', 'Design', 'Marketing',
-  'Business', 'Health & Wellness', 'Gaming', 'Education', 'Arts & Culture', 'Other',
-];
 
 const COLOR_OPTIONS = [
   { label: 'Indigo', value: '#4F46E5' },
@@ -57,7 +52,7 @@ const EMPTY_FORM: EventFormState = {
   endTime: '',
   location: '',
   address: '',
-  category: 'Technology',
+  category: '',
   capacity: 50,
   colorTag: '#4F46E5',
   tags: '',
@@ -76,6 +71,10 @@ function CreateEventPageInner() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const categoryOptions = Array.from(
+    new Set(events.map(e => e.category?.trim()).filter((c): c is string => Boolean(c)))
+  ).sort((a, b) => a.localeCompare(b));
+
   useEffect(() => {
     if (currentUser && !isAdmin) router.push('/events');
     if (!currentUser) router.push('/auth/login');
@@ -93,7 +92,7 @@ function CreateEventPageInner() {
           endTime: evt.endTime || '',
           location: evt.location || '',
           address: evt.address || '',
-          category: evt.category || 'Technology',
+          category: evt.category || '',
           capacity: evt.capacity || 50,
           colorTag: evt.colorTag || '#4F46E5',
           tags: (evt.tags || []).join(', '),
@@ -114,6 +113,7 @@ function CreateEventPageInner() {
     if (!form.date) { setError('Event date is required.'); return; }
     if (!form.time) { setError('Start time is required.'); return; }
     if (!form.location.trim()) { setError('Location is required.'); return; }
+    if (!form.category.trim()) { setError('Event type is required.'); return; }
     if (Number(form.capacity) < 1) { setError('Capacity must be at least 1.'); return; }
 
     setSaving(true);
@@ -126,7 +126,7 @@ function CreateEventPageInner() {
       endTime: form.endTime,
       location: form.location,
       address: form.address,
-      category: form.category,
+      category: form.category.trim(),
       capacity: parseInt(String(form.capacity)),
       colorTag: form.colorTag,
       tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -212,9 +212,21 @@ function CreateEventPageInner() {
                 <Typography variant="h6" fontWeight={700} mb={2.5}>Event Details</Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <TextField select label="Category *" fullWidth value={form.category} onChange={set('category')}>
-                      {CATEGORIES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                    </TextField>
+                    <Autocomplete
+                      freeSolo
+                      options={categoryOptions}
+                      value={form.category}
+                      onChange={(_, value) => setForm(f => ({ ...f, category: value ?? '' }))}
+                      onInputChange={(_, value) => setForm(f => ({ ...f, category: value }))}
+                      renderInput={params => (
+                        <TextField
+                          {...params}
+                          label="Event Type *"
+                          placeholder="e.g. Hiking, Downtown tour, Workshop"
+                          helperText="Type a new event type or choose one already used."
+                        />
+                      )}
+                    />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField label="Capacity *" type="number" fullWidth value={form.capacity} onChange={set('capacity')}
@@ -251,7 +263,7 @@ function CreateEventPageInner() {
                 </Box>
                 <Box sx={{ mt: 2.5, p: 1.5, borderRadius: 2, background: `${form.colorTag}12`, border: `1px solid ${form.colorTag}30` }}>
                   <Box sx={{ width: '100%', height: 4, borderRadius: 1, background: form.colorTag, mb: 1 }} />
-                  <Typography fontSize="0.8rem" fontWeight={700} color={form.colorTag}>{form.category}</Typography>
+                  <Typography fontSize="0.8rem" fontWeight={700} color={form.colorTag}>{form.category || 'Event Type'}</Typography>
                   <Typography fontSize="0.85rem" fontWeight={600} mt={0.5} color="text.primary" noWrap>{form.title || 'Your Event Title'}</Typography>
                 </Box>
               </Paper>
