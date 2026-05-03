@@ -63,51 +63,60 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === 'credentials') return true;
       if (!user.email) return false;
 
-      const { data: existing } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('email', user.email.toLowerCase())
-        .single();
+      try {
+        const { data: existing } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('email', user.email.toLowerCase())
+          .single();
 
-      if (!existing) {
-        const id = uuidv4();
-        const nameParts = (user.name ?? user.email).trim().split(/\s+/);
-        const avatar = nameParts.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        if (!existing) {
+          const id = uuidv4();
+          const nameParts = (user.name ?? user.email).trim().split(/\s+/);
+          const avatar = nameParts.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
-        const { error } = await supabaseAdmin.from('profiles').insert({
-          id,
-          name: user.name ?? user.email.split('@')[0],
-          email: user.email.toLowerCase(),
-          role: 'member',
-          bio: '',
-          avatar,
-        });
+          const { error } = await supabaseAdmin.from('profiles').insert({
+            id,
+            name: user.name ?? user.email.split('@')[0],
+            email: user.email.toLowerCase(),
+            role: 'member',
+            bio: '',
+            avatar,
+          });
 
-        if (error) return false;
-        user.id = id;
-      } else {
-        user.id = existing.id;
+          if (error) return false;
+          user.id = id;
+        } else {
+          user.id = existing.id;
+        }
+
+        return true;
+      } catch (err) {
+        console.error('[NextAuth] signIn callback error:', err);
+        return false;
       }
-
-      return true;
     },
     async jwt({ token, user, account }) {
       if (user) {
-        const isCredentials = account?.provider === 'credentials';
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('*')
-          .eq(isCredentials ? 'id' : 'email', isCredentials ? user.id : user.email!)
-          .single();
+        try {
+          const isCredentials = account?.provider === 'credentials';
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq(isCredentials ? 'id' : 'email', isCredentials ? user.id : user.email!)
+            .single();
 
-        if (profile) {
-          token.userId = profile.id;
-          token.role = profile.role;
-          token.avatar = profile.avatar || '';
-          token.bio = profile.bio || '';
-          token.joinedAt = profile.joined_at;
-          token.name = profile.name;
-          token.email = profile.email;
+          if (profile) {
+            token.userId = profile.id;
+            token.role = profile.role;
+            token.avatar = profile.avatar || '';
+            token.bio = profile.bio || '';
+            token.joinedAt = profile.joined_at;
+            token.name = profile.name;
+            token.email = profile.email;
+          }
+        } catch (err) {
+          console.error('[NextAuth] jwt callback error:', err);
         }
       }
       return token;
