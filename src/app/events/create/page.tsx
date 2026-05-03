@@ -24,6 +24,7 @@ const COLOR_OPTIONS = [
   { label: 'Amber', value: '#F59E0B' },
   { label: 'Rose', value: '#EC4899' },
   { label: 'Emerald', value: '#10B981' },
+  { label: 'Forest', value: '#16A34A' },
   { label: 'Sky', value: '#0EA5E9' },
   { label: 'Orange', value: '#F97316' },
   { label: 'Slate', value: '#475569' },
