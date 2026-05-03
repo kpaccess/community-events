@@ -1,0 +1,23 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+
+const EVENT_SELECT = `*, rsvps(user_id, status, profiles(name, avatar))`;
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { data, error } = await supabaseAdmin
+    .from('events')
+    .insert({ ...body, created_by: session.user.id })
+    .select(EVENT_SELECT)
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
