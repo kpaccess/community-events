@@ -25,6 +25,9 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -34,6 +37,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import StarIcon from '@mui/icons-material/Star';
 import { useApp } from '@/context/AppContext';
 
 const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -47,9 +53,12 @@ const isUpcoming = (d: string) => new Date(d + 'T23:59:59') >= new Date();
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { currentUser, isAdmin, events, users, deleteEvent } = useApp();
+  const { currentUser, isAdmin, isSuperAdmin, events, users, deleteEvent, updateUserRole } = useApp();
   const [tab, setTab] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [roleTarget, setRoleTarget] = useState<{ id: string; name: string; newRole: 'admin' | 'member' } | null>(null);
+  const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     if (currentUser && !isAdmin) router.push('/events');
@@ -68,13 +77,30 @@ export default function DashboardPage() {
     [events]
   );
 
-  const members = useMemo(() =>
-    users.filter(u => u.role === 'member').sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()),
+  // Sort: super_admin first, then admin, then member
+  const roleOrder = (role: string) => role === 'super_admin' ? 0 : role === 'admin' ? 1 : 2;
+  const sortedUsers = useMemo(() =>
+    [...users].sort((a, b) => roleOrder(a.role) - roleOrder(b.role) || a.name.localeCompare(b.name)),
     [users]
   );
 
   const handleDeleteConfirm = () => {
     if (deleteTarget) { deleteEvent(deleteTarget); setDeleteTarget(null); }
+  };
+
+  const handleRoleChange = async () => {
+    if (!roleTarget) return;
+    setRoleLoading(roleTarget.id);
+    setRoleTarget(null);
+    const result = await updateUserRole(roleTarget.id, roleTarget.newRole);
+    setRoleLoading(null);
+    setSnackbar({
+      open: true,
+      message: result.success
+        ? `${roleTarget.name} is now ${roleTarget.newRole === 'admin' ? 'an Admin' : 'a Member'}.`
+        : result.error ?? 'Failed to update role.',
+      severity: result.success ? 'success' : 'error',
+    });
   };
 
   if (!currentUser || !isAdmin) return null;
@@ -86,13 +112,47 @@ export default function DashboardPage() {
     { label: 'Total RSVPs', value: stats.rsvps, icon: <CheckCircleIcon />, color: '#EC4899', bg: '#FCE7F3' },
   ];
 
+  const getRoleChip = (role: string) => {
+    if (role === 'super_admin') return (
+      <Chip
+        icon={<StarIcon sx={{ fontSize: '14px !important', color: '#fff !important' }} />}
+        label="Super Admin"
+        size="small"
+        sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)', color: '#fff', fontWeight: 700, fontSize: '0.7rem' }}
+      />
+    );
+    if (role === 'admin') return (
+      <Chip label="Admin" size="small"
+        sx={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', color: '#fff', fontWeight: 700, fontSize: '0.7rem' }}
+      />
+    );
+    return (
+      <Chip label="Member" size="small"
+        sx={{ background: '#F3F4F6', color: '#374151', fontWeight: 700, fontSize: '0.7rem' }}
+      />
+    );
+  };
+
   return (
     <Box sx={{ background: '#F8F7FF', minHeight: 'calc(100vh - 64px)', pb: 8 }}>
+      {/* Header */}
       <Box sx={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 60%, #4338CA 100%)', py: 5 }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Box>
-              <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em' }}>Admin Dashboard</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em' }}>
+                  {isSuperAdmin ? 'Super Admin Dashboard' : 'Admin Dashboard'}
+                </Typography>
+                {isSuperAdmin && (
+                  <Chip
+                    icon={<StarIcon sx={{ fontSize: '13px !important', color: '#fff !important' }} />}
+                    label="Super Admin"
+                    size="small"
+                    sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)', color: '#fff', fontWeight: 700, fontSize: '0.65rem', height: 20 }}
+                  />
+                )}
+              </Box>
               <Typography variant="h4" color="#fff" fontWeight={800}>Welcome back, {currentUser.name.split(' ')[0]} 👋</Typography>
             </Box>
             <Button component={Link} href="/events/create" variant="contained" startIcon={<AddCircleIcon />}
@@ -104,6 +164,7 @@ export default function DashboardPage() {
       </Box>
 
       <Container maxWidth="lg" sx={{ mt: 4 }}>
+        {/* Stat Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {STAT_CARDS.map(s => (
             <Grid item xs={6} md={3} key={s.label}>
@@ -125,10 +186,11 @@ export default function DashboardPage() {
           <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', px: 2 }}>
             <Tabs value={tab} onChange={(_, v) => setTab(v)}>
               <Tab label={`Events (${events.length})`} sx={{ fontWeight: 700, fontFamily: '"Syne", sans-serif' }} />
-              <Tab label={`Members (${members.length})`} sx={{ fontWeight: 700, fontFamily: '"Syne", sans-serif' }} />
+              <Tab label={`Users (${users.length})`} sx={{ fontWeight: 700, fontFamily: '"Syne", sans-serif' }} />
             </Tabs>
           </Box>
 
+          {/* Events Tab */}
           {tab === 0 && (
             <TableContainer>
               <Table>
@@ -191,35 +253,42 @@ export default function DashboardPage() {
             </TableContainer>
           )}
 
+          {/* Users Tab */}
           {tab === 1 && (
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Member</TableCell>
+                    <TableCell>User</TableCell>
                     <TableCell>Email</TableCell>
                     <TableCell>Role</TableCell>
                     <TableCell>Joined</TableCell>
                     <TableCell>Events Going</TableCell>
+                    {isSuperAdmin && <TableCell align="right">Actions</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[...users].sort((a, b) => a.role === 'admin' ? -1 : 1).map(user => {
+                  {sortedUsers.map(user => {
                     const eventsGoing = events.filter(e => (e.attendees || []).some(a => a.userId === user.id && a.status === 'going')).length;
+                    const isSelf = currentUser.id === user.id;
+                    const isTargetSuperAdmin = user.role === 'super_admin';
+                    const canModify = isSuperAdmin && !isSelf && !isTargetSuperAdmin;
+
                     return (
                       <TableRow key={user.id} hover sx={{ '&:last-child td': { border: 0 } }}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Avatar sx={{ width: 36, height: 36, fontSize: '0.8rem' }}>{user.avatar}</Avatar>
-                            <Typography fontWeight={700} fontSize="0.875rem">{user.name}</Typography>
+                            <Avatar sx={{ width: 36, height: 36, fontSize: '0.8rem', background: isTargetSuperAdmin ? 'linear-gradient(135deg, #F59E0B, #EF4444)' : undefined }}>
+                              {user.avatar}
+                            </Avatar>
+                            <Box>
+                              <Typography fontWeight={700} fontSize="0.875rem">{user.name}</Typography>
+                              {isSelf && <Typography fontSize="0.7rem" color="text.secondary">(you)</Typography>}
+                            </Box>
                           </Box>
                         </TableCell>
                         <TableCell><Typography fontSize="0.875rem" color="text.secondary">{user.email}</Typography></TableCell>
-                        <TableCell>
-                          <Chip label={user.role === 'admin' ? 'Admin' : 'Member'} size="small"
-                            sx={{ background: user.role === 'admin' ? 'linear-gradient(135deg, #4F46E5, #7C3AED)' : '#F3F4F6', color: user.role === 'admin' ? '#fff' : '#374151', fontWeight: 700, fontSize: '0.7rem' }}
-                          />
-                        </TableCell>
+                        <TableCell>{getRoleChip(user.role)}</TableCell>
                         <TableCell>
                           <Typography fontSize="0.8rem" color="text.secondary">
                             {new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -231,11 +300,48 @@ export default function DashboardPage() {
                             <Typography fontSize="0.875rem" fontWeight={600}>{eventsGoing}</Typography>
                           </Box>
                         </TableCell>
+                        {isSuperAdmin && (
+                          <TableCell align="right">
+                            {roleLoading === user.id ? (
+                              <CircularProgress size={20} />
+                            ) : canModify ? (
+                              user.role === 'member' ? (
+                                <Tooltip title="Make Admin">
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<AdminPanelSettingsIcon sx={{ fontSize: 16 }} />}
+                                    onClick={() => setRoleTarget({ id: user.id, name: user.name, newRole: 'admin' })}
+                                    sx={{ fontSize: '0.72rem', fontWeight: 700, borderColor: '#4F46E5', color: '#4F46E5', '&:hover': { background: '#EEF2FF' } }}
+                                  >
+                                    Make Admin
+                                  </Button>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Remove Admin">
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<PersonRemoveIcon sx={{ fontSize: 16 }} />}
+                                    onClick={() => setRoleTarget({ id: user.id, name: user.name, newRole: 'member' })}
+                                    sx={{ fontSize: '0.72rem', fontWeight: 700, borderColor: '#EF4444', color: '#EF4444', '&:hover': { background: '#FEF2F2' } }}
+                                  >
+                                    Remove Admin
+                                  </Button>
+                                </Tooltip>
+                              )
+                            ) : null}
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
                   {users.length === 0 && (
-                    <TableRow><TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>No members yet.</TableCell></TableRow>
+                    <TableRow>
+                      <TableCell colSpan={isSuperAdmin ? 6 : 5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                        No users yet.
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -244,6 +350,7 @@ export default function DashboardPage() {
         </Paper>
       </Container>
 
+      {/* Delete Event Dialog */}
       <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
         <DialogTitle fontWeight={700}>Delete this event?</DialogTitle>
         <DialogContent><Typography color="text.secondary">This action is permanent and all RSVPs will be lost.</Typography></DialogContent>
@@ -252,6 +359,42 @@ export default function DashboardPage() {
           <Button onClick={handleDeleteConfirm} variant="contained" color="error">Delete</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Role Change Confirmation Dialog */}
+      <Dialog open={Boolean(roleTarget)} onClose={() => setRoleTarget(null)} PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+        <DialogTitle fontWeight={700}>
+          {roleTarget?.newRole === 'admin' ? 'Make Admin?' : 'Remove Admin?'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            {roleTarget?.newRole === 'admin'
+              ? `${roleTarget?.name} will be able to create, edit, and delete events.`
+              : `${roleTarget?.name} will lose admin privileges and become a regular member.`}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button onClick={() => setRoleTarget(null)} variant="outlined">Cancel</Button>
+          <Button
+            onClick={handleRoleChange}
+            variant="contained"
+            color={roleTarget?.newRole === 'admin' ? 'primary' : 'error'}
+          >
+            {roleTarget?.newRole === 'admin' ? 'Make Admin' : 'Remove Admin'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

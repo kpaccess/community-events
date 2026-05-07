@@ -188,13 +188,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return event?.attendees?.find(a => a.userId === currentUser.id) ?? null;
   }, [currentUser, events]);
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
+
+  // ─── User Role Management ────────────────────────────────────
+  const updateUserRole = useCallback(async (userId: string, role: 'admin' | 'member') => {
+    const res = await fetch(`/api/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { success: false, error: body.error ?? 'Failed to update role.' };
+    }
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+    return { success: true };
+  }, []);
 
   return (
     <AppContext.Provider value={{
-      currentUser, users, events, loading, isAdmin,
+      currentUser, users, events, loading, isAdmin, isSuperAdmin,
       login, signup, logout,
-      createEvent, updateEvent, deleteEvent, rsvpEvent,
+      createEvent, updateEvent, deleteEvent, rsvpEvent, updateUserRole,
       getUserById, getMyRsvp,
     }}>
       {children}

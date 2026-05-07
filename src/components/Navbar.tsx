@@ -25,6 +25,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import EventIcon from '@mui/icons-material/Event';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
+import StarIcon from '@mui/icons-material/Star';
 import { useApp } from '@/context/AppContext';
 
 const NAV_LINKS = [
@@ -36,7 +37,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { currentUser, isAdmin, logout } = useApp();
+  const { currentUser, isAdmin, isSuperAdmin, logout } = useApp();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -122,7 +123,15 @@ export default function Navbar() {
           )
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            {isAdmin && (
+            {isSuperAdmin && (
+              <Chip
+                icon={<StarIcon sx={{ fontSize: '13px !important', color: '#fff !important' }} />}
+                label="Super Admin"
+                size="small"
+                sx={{ background: 'linear-gradient(135deg, #F59E0B, #EF4444)', color: '#fff', fontWeight: 700, fontSize: '0.7rem', display: { xs: 'none', sm: 'flex' } }}
+              />
+            )}
+            {isAdmin && !isSuperAdmin && (
               <Chip label="Admin" size="small" sx={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', color: '#fff', fontWeight: 700, fontSize: '0.7rem', display: { xs: 'none', sm: 'flex' } }} />
             )}
             {isMobile && <IconButton onClick={() => setDrawerOpen(true)}><MenuIcon /></IconButton>}
@@ -174,7 +183,9 @@ export default function Navbar() {
                 <Avatar sx={{ width: 40, height: 40 }}>{currentUser.avatar}</Avatar>
                 <Box>
                   <Typography variant="subtitle2" fontWeight={700}>{currentUser.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">{currentUser.role}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {currentUser.role === 'super_admin' ? 'Super Admin' : currentUser.role === 'admin' ? 'Admin' : 'Member'}
+                  </Typography>
                 </Box>
               </Box>
             </Box>

@@ -15,42 +15,75 @@ No test framework is configured.
 
 ## Environment variables
 
-Two variables are required (`.env.local` for local dev; Netlify dashboard for production):
+Required in `.env.local` for local dev:
 
 ```
+# Supabase (client-side reads)
 NEXT_PUBLIC_SUPABASE_URL=https://bxcanynxlptvvapzjvun.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<from Supabase Dashboard → Settings → API>
+SUPABASE_SERVICE_ROLE_KEY=<from Supabase Dashboard → Settings → API>
+
+# NextAuth
+NEXTAUTH_SECRET=<random secret, e.g. openssl rand -base64 32>
+NEXTAUTH_URL=http://localhost:3000
+
+# OAuth providers (optional — only needed if using Google/GitHub login)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_ID=
+GITHUB_SECRET=
 ```
 
 ## Architecture
 
-**Gather** is a Meetup.com-style events platform — Next.js 14 (App Router), MUI v5, Supabase for auth + database.
+**Gather** is a Meetup.com-style events platform — Next.js 14 (App Router), MUI v5, Supabase for the database, NextAuth v4 for authentication.
+
+### Auth layer (NextAuth + Supabase)
+
+Auth is handled by **NextAuth v4** (`src/lib/auth.ts`), not Supabase Auth sessions. Three providers: email/password (Credentials), Google, and GitHub. Sessions use the JWT strategy; the JWT and session callbacks enrich the token with `role`, `avatar`, `bio`, and `joinedAt` fetched from `profiles`.
+
+- OAuth sign-ins auto-create a `profiles` row on first login (via the `signIn` callback).
+- Email sign-up hits `POST /api/auth/signup`, which uses the Supabase admin client to create the Supabase auth user, then immediately signs in via NextAuth credentials.
+- `src/types/global.d.ts` extends the NextAuth `Session` and `JWT` types to include the custom fields.
+
+### Two Supabase clients
+
+| Client | File | Key used | Where used |
+|---|---|---|---|
+| `supabase` | `src/lib/supabase.ts` | anon key | Client-side reads in `AppContext` |
+| `supabaseAdmin` | `src/lib/supabase-admin.ts` | service role key | Server-side only: API routes, NextAuth callbacks |
+
+`supabaseAdmin` is a lazy Proxy — it initializes the real client on first access to avoid errors during build when env vars may be absent.
+
+### State & Data (`src/context/AppContext.tsx`)
+
+All client-side state lives here (session from `useSession`, plus `events` and `users` fetched from Supabase on mount). The context exposes:
+- Auth: `login`, `signup`, `logout`
+- Events: `createEvent`, `updateEvent`, `deleteEvent` — these call API routes, not Supabase directly
+- RSVP: `rsvpEvent(eventId, status)` — pass `null` to cancel; calls API routes
+- Helpers: `getUserById`, `getMyRsvp`
+
+**Read path:** `AppContext` fetches `events` and `profiles` directly via the anon Supabase client.  
+**Write path:** All mutations go through Next.js API routes (`/api/events`, `/api/events/[id]`, `/api/rsvps`) which use `supabaseAdmin` and verify session + admin role server-side.
+
+DB rows are transformed on read: snake_case columns (`end_time`, `color_tag`, `created_by`) become camelCase. The `rsvps` relation is fetched nested via `*, rsvps(user_id, status, profiles(name, avatar))` and flattened into an `attendees` array on each event.
 
 ### Database (Supabase)
 
-Schema is in `supabase/schema.sql`. Run it once in the Supabase SQL Editor. Three tables:
+Schema is in `supabase/schema.sql`. Three tables:
 
 | Table | Purpose |
 |---|---|
-| `profiles` | Extends `auth.users`; stores name, avatar initials, role (`admin`\|`member`) |
+| `profiles` | Stores name, avatar initials, role (`admin`\|`member`), bio |
 | `events` | All event fields; `created_by` → `profiles.id` |
 | `rsvps` | Join table; unique on `(event_id, user_id)`; status `going`\|`declined` |
 
-RLS is enabled on all tables. The `is_admin()` SQL function (in schema.sql) gates event write operations.
+RLS is enabled on all tables. The `is_admin()` SQL function gates event write operations, but the API routes also enforce `role === 'admin'` in the session.
 
 **To make a user admin:** after they sign up via the app, run in Supabase SQL editor:
 ```sql
 update profiles set role = 'admin' where email = 'their@email.com';
 ```
-
-### State & Data (`src/context/AppContext.jsx`)
-
-All application state lives here. The Supabase client is in `src/lib/supabase.js`. The context exposes:
-- Auth: `login`, `signup`, `logout` (all async, backed by `supabase.auth`)
-- Events: `createEvent`, `updateEvent`, `deleteEvent` (admin-only, enforced by RLS)
-- RSVP: `rsvpEvent(eventId, status)` — pass `null` to cancel an RSVP
-
-DB rows are transformed on read: snake_case DB columns (`end_time`, `color_tag`, `created_by`) become camelCase in the app. The `rsvps` relation is fetched nested inside each event query and flattened into an `attendees` array.
 
 ### Routing (App Router)
 
@@ -60,7 +93,7 @@ DB rows are transformed on read: snake_case DB columns (`end_time`, `color_tag`,
 | `/events` | Browse + filter events |
 | `/events/[id]` | Event detail + RSVP |
 | `/events/create` | Create event; `?edit={id}` pre-fills for editing |
-| `/auth/login` | Login |
+| `/auth/login` | Login (NextAuth `signIn` page) |
 | `/auth/signup` | Signup |
 | `/dashboard` | Admin-only stats + management |
 
@@ -68,11 +101,11 @@ Admin-only routes (`/dashboard`, `/events/create`) redirect non-admins away at t
 
 ### Key Components
 
-- `src/components/ClientLayout.jsx` — wraps the entire app with `AppProvider` + MUI `ThemeProvider`; rendered by `src/app/layout.jsx`
-- `src/components/Navbar.jsx` — responsive nav with role-aware links and mobile drawer
-- `src/components/EventCard.jsx` — reusable card used in browse and landing views
+- `src/components/ClientLayout.tsx` — wraps the entire app with `AppProvider` + MUI `ThemeProvider`; rendered by `src/app/layout.tsx`
+- `src/components/Navbar.tsx` — responsive nav with role-aware links and mobile drawer
+- `src/components/EventCard.tsx` — reusable card used in browse and landing views
 
-### Theme (`src/theme.js`)
+### Theme (`src/theme.ts`)
 
 MUI theme with:
 - Primary: Indigo `#4F46E5`, Secondary: Amber `#F59E0B`

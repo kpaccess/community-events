@@ -28,7 +28,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'member';
+  role: 'super_admin' | 'admin' | 'member';
   bio: string;
   avatar: string;
   joinedAt: string;
@@ -42,6 +42,7 @@ export interface AppContextType {
   events: Event[];
   loading: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -49,6 +50,7 @@ export interface AppContextType {
   updateEvent: (id: string, data: Omit<Event, 'id' | 'createdBy' | 'createdAt' | 'attendees'>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   rsvpEvent: (eventId: string, status: RsvpStatus | null) => Promise<void>;
+  updateUserRole: (userId: string, role: 'admin' | 'member') => Promise<{ success: boolean; error?: string }>;
   getUserById: (id: string) => User | undefined;
   getMyRsvp: (eventId: string) => Attendee | null;
 }

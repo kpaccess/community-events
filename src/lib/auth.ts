@@ -3,7 +3,6 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin } from './supabase-admin';
 
 export const authOptions: NextAuthOptions = {
@@ -71,9 +70,22 @@ export const authOptions: NextAuthOptions = {
           .single();
 
         if (!existing) {
-          const id = uuidv4();
           const nameParts = (user.name ?? user.email).trim().split(/\s+/);
           const avatar = nameParts.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+
+          // Create a Supabase Auth user so the FK constraint on profiles.id is satisfied
+          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: user.email.toLowerCase(),
+            email_confirm: true,
+            user_metadata: { name: user.name ?? user.email.split('@')[0] },
+          });
+
+          if (authError || !authData?.user) {
+            console.error('[NextAuth] Failed to create Supabase auth user:', authError);
+            return false;
+          }
+
+          const id = authData.user.id;
 
           const { error } = await supabaseAdmin.from('profiles').insert({
             id,
@@ -84,7 +96,10 @@ export const authOptions: NextAuthOptions = {
             avatar,
           });
 
-          if (error) return false;
+          if (error) {
+            console.error('[NextAuth] Failed to insert profile:', error);
+            return false;
+          }
           user.id = id;
         } else {
           user.id = existing.id;
@@ -123,7 +138,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       session.user.id = token.userId as string;
-      session.user.role = (token.role as 'admin' | 'member') ?? 'member';
+      session.user.role = (token.role as 'super_admin' | 'admin' | 'member') ?? 'member';
       session.user.avatar = (token.avatar as string) ?? '';
       session.user.bio = (token.bio as string) ?? '';
       session.user.joinedAt = (token.joinedAt as string) ?? '';
