@@ -53,18 +53,20 @@ export async function PATCH(
   }
   const { role } = body;
 
-  if (!['admin', 'member'].includes(role)) {
+  if (typeof role !== 'string' || !['admin', 'member'].includes(role)) {
     return NextResponse.json({ error: 'Invalid role. Must be admin or member.' }, { status: 400 });
   }
 
+  const safeRole = role as 'admin' | 'member';
+
   const { error: updateError } = await supabaseAdmin
     .from('profiles')
-    .update({ role })
+    .update({ role: safeRole })
     .eq('id', targetId);
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, id: targetId, role });
+  return NextResponse.json({ success: true, id: targetId, role: safeRole });
 }
