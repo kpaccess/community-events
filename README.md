@@ -1,107 +1,144 @@
 # Gather – Community Events Platform
 
-A Meetup.com-style community events platform built with **Next.js 14 (App Router)**, **MUI v5**, and localStorage for data persistence. No backend required to run.
+A Meetup.com-style community events platform built with **Next.js 14 (App Router)**, **MUI v5**, **Supabase** (database), and **NextAuth v4** (authentication).
 
 ## Features
 
-| Feature | Details |
-|---|---|
-| **Auth** | Signup, login, logout with roles (admin / member) |
-| **Events** | Create, edit, delete (admin only) |
-| **RSVP** | Members can mark Going / Can't Make It |
-| **Dashboard** | Admin stats, events table, members list |
-| **Search & Filter** | Search by keyword, filter by category, sort |
-| **Responsive** | Mobile-friendly with drawer nav |
+| Feature             | Details                                           |
+| ------------------- | ------------------------------------------------- |
+| **Auth**            | Email/password, Google, and GitHub sign-in        |
+| **Events**          | Create, edit, delete (admin only)                 |
+| **RSVP**            | Members can mark Going / Can't Make It            |
+| **Dashboard**       | Admin stats, events table, members list           |
+| **Search & Filter** | Search by keyword, filter by category, sort       |
+| **Responsive**      | Mobile-friendly with drawer nav                   |
 
 ## Quick Start
 
-```bash
-npm install
-npm run dev
-```
+1. **Install dependencies**
 
-Open [http://localhost:3000](http://localhost:3000)
+   ```bash
+   npm install
+   ```
 
-## Default Admin Login
+2. **Set up environment variables** — create `.env.local` in the project root:
 
-```
-Email:    admin@gather.com
-Password: admin123
-```
+   ```
+   # Supabase
+   NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from Supabase Dashboard → Settings → API>
+   SUPABASE_SERVICE_ROLE_KEY=<service role key from Supabase Dashboard → Settings → API>
 
-> The admin account is pre-seeded. Any new signups become **members**.
+   # NextAuth
+   NEXTAUTH_SECRET=<random secret — generate with: openssl rand -base64 32>
+   NEXTAUTH_URL=http://localhost:3000
+
+   # OAuth providers (optional)
+   GOOGLE_CLIENT_ID=
+   GOOGLE_CLIENT_SECRET=
+   GITHUB_ID=
+   GITHUB_SECRET=
+   ```
+
+3. **Apply the database schema** — run `supabase/schema.sql` in the Supabase SQL editor.
+
+4. **Start the dev server**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
 
 ## Project Structure
 
 ```
 src/
 ├── app/
-│   ├── page.jsx              # Landing / Home
+│   ├── page.tsx                    # Landing / Home
+│   ├── layout.tsx
+│   ├── globals.css
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── [...nextauth]/      # NextAuth handler
+│   │   │   └── signup/             # POST: create account
+│   │   ├── events/
+│   │   │   ├── route.ts            # GET list / POST create
+│   │   │   └── [id]/route.ts       # GET / PATCH / DELETE
+│   │   ├── rsvps/route.ts          # POST / DELETE
+│   │   └── users/[id]/route.ts     # PATCH (role, profile)
 │   ├── auth/
-│   │   ├── login/page.jsx    # Login
-│   │   └── signup/page.jsx   # Signup
+│   │   ├── login/page.tsx
+│   │   └── signup/page.tsx
 │   ├── events/
-│   │   ├── page.jsx          # Browse events (search + filter)
-│   │   ├── [id]/page.jsx     # Event detail + RSVP
-│   │   └── create/page.jsx   # Create/Edit event (admin)
-│   └── dashboard/page.jsx    # Admin dashboard
+│   │   ├── page.tsx                # Browse events (search + filter)
+│   │   ├── [id]/page.tsx           # Event detail + RSVP
+│   │   └── create/page.tsx         # Create / Edit event (admin)
+│   └── dashboard/page.tsx          # Admin dashboard
 ├── components/
-│   ├── ClientLayout.jsx      # ThemeProvider + AppProvider wrapper
-│   ├── Navbar.jsx            # Top nav (auth-aware)
-│   └── EventCard.jsx         # Reusable event card
+│   ├── ClientLayout.tsx            # ThemeProvider + AppProvider wrapper
+│   ├── Navbar.tsx                  # Top nav (role-aware)
+│   └── EventCard.tsx               # Reusable event card
 ├── context/
-│   └── AppContext.jsx        # Global state (auth + events + users)
-└── theme.js                  # MUI theme (Syne + DM Sans, indigo/amber)
+│   └── AppContext.tsx              # Global state (session + events + users)
+├── lib/
+│   ├── auth.ts                     # NextAuth config (providers, callbacks)
+│   ├── supabase.ts                 # Anon client (client-side reads)
+│   └── supabase-admin.ts           # Service role client (API routes only)
+├── types/
+│   ├── index.ts
+│   ├── global.d.ts                 # NextAuth Session/JWT type extensions
+│   └── next-auth.d.ts
+└── theme.ts                        # MUI theme (Syne + DM Sans, indigo/amber)
 ```
 
-## Data Layer
+## Architecture
 
-All data is stored in **localStorage** under these keys:
+**Read path:** `AppContext` fetches events and profiles directly from Supabase using the anon client on mount.
 
-| Key | Contents |
-|---|---|
-| `cm_users` | Array of user objects |
-| `cm_events` | Array of event objects |
-| `cm_currentUser` | Currently logged-in user |
+**Write path:** All mutations go through Next.js API routes (`/api/events`, `/api/rsvps`, etc.), which use the service role client and verify the session server-side.
 
-To reset all data: open DevTools → Application → Local Storage → delete all `cm_*` keys and refresh.
+**Auth:** NextAuth v4 with JWT sessions. The JWT and session callbacks enrich the token with `role`, `avatar`, `bio`, and `joinedAt` from `profiles`. OAuth sign-ins auto-create a `profiles` row on first login. Email sign-up hits `POST /api/auth/signup`.
+
+## Database (Supabase)
+
+Schema is in `supabase/schema.sql`. Three tables:
+
+| Table      | Purpose                                                         |
+| ---------- | --------------------------------------------------------------- |
+| `profiles` | Name, avatar initials, role (`admin`\|`member`), bio           |
+| `events`   | All event fields; `created_by` → `profiles.id`                 |
+| `rsvps`    | Join table; unique on `(event_id, user_id)`; status `going`\|`declined` |
+
+RLS is enabled on all tables. The `is_admin()` SQL function gates event writes; API routes also enforce `role === 'admin'` in the session.
 
 ## User Roles
 
-| Role | Permissions |
-|---|---|
-| **admin** | Create / edit / delete events, view dashboard, all member permissions |
-| **member** | Browse events, RSVP (Going / Decline), view event details |
+| Role       | Permissions                                                           |
+| ---------- | --------------------------------------------------------------------- |
+| **admin**  | Create / edit / delete events, view dashboard, all member permissions |
+| **member** | Browse events, RSVP (Going / Decline), view event details             |
 
-## Making Yourself Admin
+New signups are assigned the `member` role by default.
 
-To promote a signed-up user to admin, open DevTools Console:
+## Making a User Admin
 
-```js
-const users = JSON.parse(localStorage.getItem('cm_users'));
-const updated = users.map(u => u.email === 'you@email.com' ? {...u, role: 'admin'} : u);
-localStorage.setItem('cm_users', JSON.stringify(updated));
-// Then log out and log back in
+After they sign up via the app, run in the Supabase SQL editor:
+
+```sql
+update profiles set role = 'admin' where email = 'their@email.com';
 ```
 
-## Adding a Second Admin
-
-Same method as above — just change the target email to the other admin's email.
-
-## Upgrading to a Real Backend
-
-The `AppContext.jsx` actions (`login`, `signup`, `createEvent`, etc.) are the integration points. Replace the localStorage calls with `fetch()` calls to your API (e.g. Next.js API routes + Prisma + PostgreSQL).
-
-Recommended stack for production:
-- **Auth**: NextAuth.js or Clerk
-- **DB**: PostgreSQL with Prisma ORM  
-- **Hosting**: Vercel (Next.js native)
-- **Images**: Cloudinary or Vercel Blob
+They must log out and back in for the change to take effect.
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
-- **UI**: MUI v5
-- **Fonts**: Syne (headings) + DM Sans (body) via Google Fonts
-- **State**: React Context + localStorage
-- **Language**: JavaScript (JSX)
+| Layer         | Technology                              |
+| ------------- | --------------------------------------- |
+| Framework     | Next.js 14 (App Router)                 |
+| UI            | MUI v5                                  |
+| Auth          | NextAuth v4 (Credentials, Google, GitHub) |
+| Database      | Supabase (PostgreSQL)                   |
+| Language      | TypeScript                              |
+| Fonts         | Syne (headings) + DM Sans (body)        |
+| State         | React Context + Supabase                |
